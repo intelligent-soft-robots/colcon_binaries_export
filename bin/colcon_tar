@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# checking the arguments
+if [ "$#" -ne 2 ]; then
+    >&2 echo "2 arguments expected: path to extra folder content and project name"
+    exit 1 
+fi
+
+# the resources folder is expected to be in
+# /etc/colcon_binaries_export/resources
+resources_folder=/etc/colcon_binaries_export
+if [ ! -d ${resources_folder} ]; then
+    echo "failed to find ${resources_folder}"
+    exit 1
+fi
+
+
+# the content of this folder will be added to the tar file
+extra_content_folder=$1
+project_name=$2
+
+# path to current folder, expected to be at the root of the install folder
+root_folder=$(pwd)
+install_folder=${root_folder}/"install"
+if [ ! -d ${install_folder} ]; then
+    echo "failed to find an install folder in the current directory"
+    exit 1
+fi
+
+# running compilation again, with correct merge-install argument
+echo ""
+echo "## calling 'colcon build --merge-install'"
+echo ""
+colcon build --merge-install
+exit_status=$?
+if [[ $exit_status -ne 0 ]];then
+    echo "failed to colcon compile with --merge-install argument"
+    exit ${exit_status}
+fi
+
+# creating and going to a tmp folder
+cd $(mktemp -d)
+tmp_folder=$(pwd)
+
+# creating a destination folder in tmp folder
+tmp_binaries_folder=${tmp_folder}/binaries
+tmp_install_folder=${tmp_binaries_folder}/install
+echo ""
+echo "## creating '${tmp_install_folder}'"
+echo ""
+mkdir -p ${tmp_install_folder}
+
+# copying the install folder to ci folder
+echo ""
+echo "## copying ${install_folder} to ${tmp_install_folder}"
+echo ""
+cp -r ${install_folder}/* ${tmp_install_folder}
+
+
+# copying the content of the resources directory
+# (configure, makefile, etc)
+echo ""
+echo "## copying ${resources_folder} to ${tmp_binaries_folder}"
+echo ""
+cp ${resources_folder}/* ${tmp_binaries_folder}
+chmod +x ${tmp_binaries_folder}/configure
+chmod +x ${tmp_binaries_folder}/list_files
+
+# writing a file with the project name
+echo ""
+echo "## writing ${tmp_binaries_folder}/project_name.txt"
+echo ""
+echo "${project_name}" >> ${tmp_binaries_folder}/project_name.txt
+
+# adding the content of the extra folder
+echo ""
+echo "## copying ${extra_content_folder} to ${tmp_binaries_folder}"
+echo ""
+cp -r ${extra_content_folder}/* ${tmp_binaries_folder} 
+
+# tar ball file name
+full_ubuntu_release=$(lsb_release -r)
+ubuntu_release=(${full_ubuntu_release//;/ })
+full_python3_version=$(python3 --version)
+python3_version=(${full_python3_version//;/ })
+tar_filename=${project_name}_$(date '+%Y-%m-%d')_ubuntu${ubuntu_release[1]}_py${python3_version[1]}_binaries.tar.gz
+echo ""
+echo "## set tar filename to ${tar_filename}"
+echo ""
+
+
+# creating the tar ball
+cd ${tmp_binaries_folder}
+echo ""
+echo "## creating ${tar_filename} from ${tmp_binaries_folder}"
+echo ""
+tar -czvf ${tar_filename} ./* 
+
+# moving tar ball to current directory
+echo ""
+echo "# moving ${tmp_binaries_folder}/${tar_filename} to ${root_folder}"
+echo ""
+mv ${tmp_binaries_folder}/${tar_filename} ${root_folder}
+
+# done
+echo ""
+echo "# done"
+echo ""
+exit 0

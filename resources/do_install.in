@@ -1,0 +1,88 @@
+#!/bin/bash
+
+bindir=BINDIR
+libdir=LIBDIR
+includedir=INCLUDEDIR
+pythonsitepackagesdir=PYTHONDIR
+configdir="/opt/mpi-is/"
+
+# creating an uninstall file on the fly
+project_name=$(cat $(pwd)/project_name.txt)
+uninstall=$(pwd)/uninstall_${project_name}
+touch ${uninstall}
+chmod +x ${uninstall}
+
+include_folders=$($(pwd)/list_files list_install_include_folders)
+echo "${include_folders}" | \
+    while read folder; do
+	echo "create directory: ${includedir}/${folder}"
+	mkdir -p ${includedir}/${folder};
+    done
+
+include_files=$($(pwd)/list_files list_install_include_files)
+echo "${include_files}" | \
+    while read file; do
+	echo "install to ${includedir}: ${file}"
+	install $(pwd)/install/include/${file} ${includedir}/${file};
+	echo "rm ${includedir}/${file}" >> ${uninstall}
+    done
+
+bin_files=$($(pwd)/list_files list_install_bin_files)
+echo "${bin_files}" | \
+    while read file; do
+	echo "install to ${bindir}: ${file}"
+	install $(pwd)/install/bin/${file} ${bindir}/${file};
+	echo "rm ${bindir}/${file}" >> ${uninstall}
+    done
+
+lib_files=$($(pwd)/list_files list_install_lib_files)
+echo "${lib_files}" | \
+    while read file; do
+	echo "install to ${libdir}: ${file}"
+	install $(pwd)/install/lib/${file} ${libdir}/${file};
+	echo "rm ${libdir}/${file}" >> ${uninstall}
+    done
+
+python_folders=$($(pwd)/list_files list_install_python_folders)
+echo "${python_folders}" | \
+    while read folder; do
+	echo "create directory: ${pythonsitepackagesdir}/${folder}"
+	mkdir -p ${pythonsitepackagesdir}/${folder};
+    done
+
+python_files=$($(pwd)/list_files list_install_python_files)
+python_install_folder=$($(pwd)/list_files lib_python_dist_folder)
+echo "${python_files}" | \
+    while read file; do
+	echo "install to ${pythonsitepackagesdir}: ${file}"
+	install ${python_install_folder}/${file} ${pythonsitepackagesdir}/${file};
+	echo "rm ${pythonsitepackagesdir}/${file}" >> ${uninstall}
+    done
+
+
+if [ -d "/opt/mpi-is" ]; then
+    configuration_folders=$($(pwd)/list_files list_config_folders)
+    echo "${configuration_folders}" | \
+	while read folder; do
+	    echo "create directory: ${configdir}/${folder}"
+	    mkdir -p ${configdir}/${folder};
+	done
+
+    configuration_files=$($(pwd)/list_files list_config_files)
+    echo "${configuration_files}" | \
+	while read file; do
+	    echo "install to ${configdir}: ${file}"
+	    install $(pwd)/install/${configdir}/${file} ${configdir}/${file};
+	    echo "rm ${configdir}/${file}" >> ${uninstall}
+	done
+fi
+
+# installing the uninstall file
+install ${uninstall} ${bindir}
+
+
+echo ""
+echo "**"
+echo "${project_name} installed. ${bindir}/uninstall_${project_name} to uninstall it."
+echo "**"
+echo ""

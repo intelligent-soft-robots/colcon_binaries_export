@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+
+import traceback
+import json
+import os
+import sys
+
+config_file_g = "make_install_excluded.json"
+install_path_g = os.path.join("install")
+
+
+def _root_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+def _install_dir():
+    global install_path_g
+    return os.path.join(_root_dir(),install_path_g)
+
+def _read_config():
+    global config_file_g
+    config_path = os.path.join(_root_dir(),config_file_g)
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError("failed to find {}".format(config_path))
+    with open(config_path) as f:
+        config=json.load(f)
+    return config
+
+def _list_files(path,excluded_files):
+    files = os.listdir(path)
+    files = [f for f in files
+             if os.path.isfile(os.path.join(path,f))]
+    files = [f for f in files
+             if not any([ex in f for ex in excluded_files])]
+    for f in files:
+        print(f)
+
+def _list_files_recursive(path,excluded_folders):
+    for root,dirs,files in os.walk(path):
+        dirs[:] = [d
+                   for d in dirs
+                   if not any([ex in d for ex in excluded_folders]) ]
+        for f in files:
+            print(os.path.join(root,f)[len(path)+1:])
+
+def _list_folders_recursive(path,
+                            excluded_folders):
+    subfolders = set()
+    for root,dirs,files in os.walk(path):
+        dirs[:] = [d
+                   for d in dirs
+                   if not any([ex in d for ex in excluded_folders]) ]
+        for dir_ in dirs:
+            if root in subfolders:
+                subfolders.remove(root)
+            if not any([ex in dir_ for ex in excluded_folders]):
+                subfolders.add(os.path.join(root,dir_))
+    for subfolder in subfolders:
+        print(subfolder[len(path)+1:])
+
+            
+# abs path to /path/to/install/lib/python3.x/
+def lib_python_folder(display=True):
+    path = os.path.join(_install_dir(),"lib")
+    libdirs = os.listdir(path)
+    libdirs = [d for d in libdirs
+               if os.path.isdir(os.path.join(path,d))]
+    pythondir = [d for d in libdirs if "python" in d][0]
+    r = os.path.join(path,pythondir)
+    if display:
+        print(r)
+    return r
+    
+# abs path to /path/to/install/lib/python3.x/site-packages
+# (or /path/to/install/lib/python3.x/dist-packages)
+def lib_python_dist_folder(display=True):
+    pythondir = lib_python_folder(display=False)
+    libdirs = os.listdir(pythondir)
+    libdirs = [d for d in libdirs
+               if os.path.isdir(os.path.join(pythondir,d))]
+    distdir = [d for d in libdirs
+               if any([sd in d for sd in ("site-packages","dist_packages")])][0]
+    r = os.path.join(pythondir,distdir)
+    if display:
+        print(r)
+    return r
+    
+# for listing the file content of /install/lib
+# (not recursive)
+def list_install_lib_files():
+    path = os.path.join(_install_dir(),"lib")
+    excluded_files = _read_config()["lib"]
+    _list_files(path,excluded_files)
+
+# for listing the file content of /install/bin
+# (not recursive)
+def list_install_bin_files():
+    path = os.path.join(_install_dir(),"bin")
+    excluded_files = _read_config()["bin"]
+    _list_files(path,excluded_files)
+        
+# for listing the content of /install/include
+# excluding for example the content of
+# the folders gtest and pybind11
+def list_install_include_files():
+    path = os.path.join(_install_dir(),"include")
+    excluded_folders = _read_config()["include"]
+    _list_files_recursive(path,excluded_folders)
+
+# for listing all the subfolders of /install/include
+def list_install_include_folders():
+    path = os.path.join(_install_dir(),"include")
+    excluded_folders = _read_config()["include"]
+    _list_folders_recursive(path,excluded_folders)
+
+# for listing the content of /install/opt/mpi-is/
+# (if such folder exists)
+def list_config_files():
+    path = os.path.join(_install_dir(),"opt","mpi-is")
+    if not os.path.isdir(path):
+        return 
+    excluded_folders = []
+    _list_files_recursive(path,excluded_folders)
+
+# for listing all the subfolders of /install/opt/mpi-is/
+# (if such folder exists)
+def list_config_folders():
+    path = os.path.join(_install_dir(),"opt","mpi-is")
+    if not os.path.isdir(path):
+        return 
+    excluded_folders=[]
+    _list_folders_recursive(path,excluded_folders)
+    
+# for listing all the subfolders of /install/lib/python3.x/site-packages/
+def list_install_python_folders():
+    path = lib_python_dist_folder(display=False)
+    excluded_folders = _read_config()["python"]
+    _list_folders_recursive(path,excluded_folders)
+
+# for listing the content of /install/include
+# excluding for example the content of
+# the folders gtest and pybind11
+def list_install_python_files():
+    path = lib_python_dist_folder(display=False)
+    excluded_folders = _read_config()["python"]
+    _list_files_recursive(path,excluded_folders)
+
+    
+def _execute(argv):
+    globals()[argv[1]]()
+
+if __name__ == "__main__":
+    try :
+        _execute(sys.argv)
+    except Exception as e:
+        traceback.print_exc()
+        sys.stderr.write("list_include_folders error: {}\n".format(e))
+        sys.exit(1)
+    sys.exit(0)

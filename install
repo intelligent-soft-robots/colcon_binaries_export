@@ -1,0 +1,31 @@
+#!/bin/bash
+
+bindir=/usr/local/bin/
+configdir=/etc/colcon_binaries_export
+exename="colcon_tar"
+currentdir=$(pwd)
+
+echo "- creating ${configdir}"
+mkdir -p ${configdir}
+
+echo "- set content of ${configdir}"
+upstream_resources=${currentdir}/resources
+if [ ! -d ${upstream_resources} ]; then
+    echo "failed to find ${upstream_resources}"
+    exit 1
+fi
+cp -r ${upstream_resources}/* ${configdir}
+
+echo "- copy colcon_tar to ${bindir}"
+upstream_exe=${currentdir}/bin/${exename}
+if [ ! -f ${upstream_exe} ]; then
+    echo "failed to find ${colcon_tar}"
+    exit 1
+fi
+cp ${upstream_exe} ${bindir}
+chmod +x ${bindir}/${exename}
+chown 111 ${bindir}/${exename}
+
+echo "- done"
+exit 0
+

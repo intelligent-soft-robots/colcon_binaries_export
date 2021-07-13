@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import sys
+
+config_file_g = "make_install_excluded.json"
+install_path_g = os.path.join("install")
+
+
+def _root_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+def _install_dir():
+    global install_path_g
+    return os.path.join(_root_dir(),install_path_g)
+
+def _read_config():
+    global config_file_g
+    config_path = os.path.join(_root_dir(),config_file_g)
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError("failed to find {}".format(config_path))
+    with open(config_path) as f:
+        config=json.load(f)
+    return config
+
+def _list(path,
+         excluded):
+    subfolders = set()
+    for root,dirs,files in os.walk(path):
+        if any([ex in root for ex in excluded]):
+            continue
+        for dir_ in dirs:
+            if root in subfolders:
+                subfolders.remove(root)
+            if not any([ex in dir_ for ex in excluded]):
+                subfolders.add(os.path.join(root,dir_))
+    for subfolder in subfolders:
+        print(subfolder[len(path):])
+
+def _execute():
+    config = _read_config()
+    excluded = config["include"]
+    path = os.path.join(_install_dir(),"include")
+    _list(path,excluded)
+
+if __name__ == "__main__":
+    try :
+        _execute()
+    except Exception as e:
+        sys.stderr.write("list_include_folders error: {}\n".format(e))
+        sys.exit(1)
+    sys.exit(0)

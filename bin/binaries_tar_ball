@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# checking the arguments
+if [ "$#" -ne 2 ]; then
+    >&2 echo "2 arguments expected: path to extra folder content and project name"
+    exit 1 
+fi
+
+# the resources folder is expected to be in
+# /etc/colcon_binaries_export/resources
+resources_folder=/etc/colcon_binaries_export/resources
+if [ ! -d ${resources_folder} ]; then
+    echo "failed to find ${resources_folder}"
+    exit 1
+fi
+
+
+# the content of this folder will be added to the tar file
+extra_content_folder=$1
+project_name=$2
+
+# path to current folder, expected to be at the root of the install folder
+root_folder=$(pwd)
+install_folder=${root_folder}/"install"
+if [ ! -d ${install_folder} ]; then
+    echo "failed to find an install folder in the current directory"
+    exit 1
+fi
+
+# running compilation again, with correct merge-install argument
+colcon build --merge-install
+exit_status=$?
+if [[ $exit_status -ne 0 ]];then
+    echo "failed to colcon compile with --merge-install argument"
+    exit ${exit_status}
+fi
+
+# creating and going to a tmp folder
+cd $(mktemp -d)
+tmp_folder=$(pwd)
+
+# creating a destination folder in tmp folder
+tmp_binaries_folder=${tmp_folder}/binaries
+tmp_install_folder=${tmp_binaries_folder}/install
+mkdir -p ${tmp_install_folder}
+
+# copying the install folder to ci folder
+cp -r ${install_folder} ${tmp_install_folder}
+
+# copying the content of the resources directory
+# (configure, makefile, etc)
+cp ${resources_folder}/* ${tmp_binaries_folder}
+chmod +x ${tmp_binaries_folder}/configure
+chmod +x ${tmp_binaries_folder}/list_files
+mv ${tmp_binaries_folder}/README_binaries.txt ${binaries_tar_dir}/README.txt
+rm ${tmp_binaries_folder}/README_source.txt
+
+# writing a file with the project name
+echo "${project_name}" >> ${binaries_tar_dir}/project_name.txt
+
+# adding the content of the extra folder
+cp -r ${extra_content_folder}/* ${binaries_tar_dir} 
+
+# tar ball file name
+tar_filename=${project_name}_$(date '+%Y-%m-%d')_ubuntu${ubuntu_release}_py${python3_version[0]}.${python3_version[1]}_binaries.tar.gz
+
+# creating the tar ball
+cd ${tmp_binaries_folder}
+tar -czvf ${tar_filename} ./* 
+
+# moving tar ball to current directory
+mv ${tmp_binaries_folder}/${tar_filename} ${root_folder}
+
+# done
+exit 0

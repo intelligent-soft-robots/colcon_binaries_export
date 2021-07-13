@@ -1,0 +1,46 @@
+#!/bin/bash
+
+PREFIX="/usr/local"
+PYTHONDIR=$(python3 -c 'import site; print(site.getsitepackages()[0])')
+
+# Loop through arguments and process them
+for arg in "$@"
+do
+    case $arg in
+	--prefix=*)
+        PREFIX="${arg#*=}"
+        shift 
+        ;;
+	--pythondir=*)
+        PYTHONDIR="${arg#*=}"
+        shift 
+        ;;
+	*) echo "unsupported argument: ${arg}"
+    esac
+done
+
+
+BINDIR="${PREFIX}/bin"
+LIBDIR="${PREFIX}/lib"
+INCLUDEDIR="${PREFIX}/include"
+
+echo ""
+echo "bin directory: ${BINDIR}"
+echo "lib directory: ${LIBDIR}"
+echo "include directory: ${INCLUDEDIR}"
+echo "python directory: ${PYTHONDIR}"
+echo ""
+
+# Generating Makefile from Makefile.in
+rm -f do_install
+touch do_install
+echo "# file automatically created by configure" >> do_install
+cat do_install.in >> do_install
+sed -i "s|BINDIR|$BINDIR|g" ./do_install
+sed -i "s|LIBDIR|$LIBDIR|g" ./do_install
+sed -i "s|INCLUDEDIR|$INCLUDEDIR|g" ./do_install
+sed -i "s|PYTHONDIR|$PYTHONDIR|g" ./do_install
+chmod +x ./do_install
+
+
+

@@ -1,0 +1,7 @@
+{
+    "include":["gtest","gmock","package_template","pybind11"],
+    "lib":["libgmock","libgtest","package_template"],
+    "bin":[],
+    "python":["ament_","package_template"]
+}
+
