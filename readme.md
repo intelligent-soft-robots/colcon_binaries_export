@@ -7,6 +7,7 @@ colcon_binaries_export is a convenient tool for exporting the content of a colco
 
 ```bash
 git clone https://github.com/intelligent-soft-robots/colcon_binaries_export.git
+cd colcon_binaries_export
 sudo ./install
 ```
 
