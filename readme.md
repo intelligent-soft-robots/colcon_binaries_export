@@ -51,5 +51,5 @@ cp /path/to/my_project_ubuntu20.04_py3.8.10_binaries.tar.gz .
 tar -zxvf ./my_project_ubuntu20.04_py3.8.10_binaries.tar.gz
 ./configure
 sudo make install
-ldconfig
+sudo ldconfig
 ```
